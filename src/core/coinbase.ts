@@ -6,10 +6,15 @@ import {
   PaymentProcessorError,
   PaymentProcessorSessionResponse,
   PaymentSessionStatus,
+  PaymentStatus,
 } from "@medusajs/medusa";
 import { ErrorCodes, CoinbaseOptions } from "../types";
 import { MedusaError } from "@medusajs/utils";
 import crypto from "crypto";
+import coinbase from "coinbase-commerce-node";
+import moment from "moment";
+const Client = coinbase.Client;
+const Charge = coinbase.resources.Charge;
 
 /**
  * The paymentIntent object corresponds to a razorpay order.
@@ -25,43 +30,78 @@ abstract class Coinbase extends AbstractPaymentProcessor {
     super(_, options);
 
     this.options_ = options;
+    this.init();
+  }
+
+  protected init() {
+    Client.init(this.options_.COINBASE_API_KEY);
+  }
+
+  async getCoinbasePaymentStatus(id: string) {
+    let chargeData = await Charge.retrieve(id);
+    return chargeData.timeline[chargeData.timeline.length - 1].status;
   }
 
   async getPaymentStatus(
     paymentSessionData: Record<string, unknown>
   ): Promise<PaymentSessionStatus> {
     console.log("=>>>>>>>>>>calling get payment status");
-    // const id = paymentSessionData.id as string;
-    // const paymentIntent = await this.razorpay_.orders.fetch(id);
-
-    // switch (paymentIntent.status) {
-    //   // created' | 'authorized' | 'captured' | 'refunded' | 'failed'
-    //   case "created":
-    //     return PaymentSessionStatus.REQUIRES_MORE;
-
-    //   case "paid":
-    //     return PaymentSessionStatus.AUTHORIZED;
-
-    //   case "attempted":
-    //     return await this.getRazorpayPaymentStatus(paymentIntent);
-
-    //   default:
-    //     return PaymentSessionStatus.PENDING;
-    // }
-    return PaymentSessionStatus.PENDING;
+    let chargeData = await Charge.retrieve(paymentSessionData.id as string);
+    let finalStatus: PaymentSessionStatus = PaymentSessionStatus.PENDING;
+    chargeData.timeline.map((activity) => {
+      switch (activity.status) {
+        case "NEW":
+          finalStatus = PaymentSessionStatus.PENDING;
+          break;
+        case "PENDING":
+          finalStatus = PaymentSessionStatus.PENDING;
+          break;
+        case "COMPLETED":
+          finalStatus = PaymentSessionStatus.AUTHORIZED;
+          break;
+        case "EXPIRED":
+          finalStatus = PaymentSessionStatus.ERROR;
+          break;
+        case "CANCELED":
+          finalStatus = PaymentSessionStatus.CANCELED;
+          break;
+        case "UNRESOLVED":
+          finalStatus = PaymentSessionStatus.CANCELED;
+          break;
+        default:
+          finalStatus = PaymentSessionStatus.PENDING;
+          break;
+      }
+    });
+    return finalStatus;
   }
 
   async initiatePayment(
     context: PaymentProcessorContext
   ): Promise<PaymentProcessorError | PaymentProcessorSessionResponse> {
+    let {
+      amount,
+      currency_code,
+      paymentSessionData,
+      email,
+      customer,
+      billing_address,
+      resource_id,
+    } = context;
+    const charge = await Charge.create({
+      name: this.options_.COINBASE_CHARGE_NAME,
+      description: this.options_.COINBASE_CHARGE_DESCRIPTION,
+      pricing_type: "fixed_price",
+      local_price: { amount: amount.toString(), currency: currency_code },
+      metadata: {
+        customer_id: customer?.id,
+        email,
+      },
+    });
+
     return {
-      session_data: {} as any,
-      update_requests:
-        //  customer?.metadata?.razorpay_id
-        //   ? undefined
-        {
-          customer_metadata: {},
-        },
+      session_data: charge as any,
+      update_requests: undefined,
     };
   }
 
@@ -86,6 +126,16 @@ abstract class Coinbase extends AbstractPaymentProcessor {
     PaymentProcessorError | PaymentProcessorSessionResponse["session_data"]
   > {
     console.log("=>>>>>>>>>>calling cancel payment", paymentSessionData);
+    let coinbaseStatus = await this.getCoinbasePaymentStatus(
+      paymentSessionData.id as string
+    );
+    if (coinbaseStatus != "NEW") {
+      throw new MedusaError(
+        MedusaError.Types.NOT_ALLOWED,
+        "Cannot cancel charge with status not as New"
+      );
+    }
+
     return paymentSessionData;
   }
 
@@ -112,7 +162,10 @@ abstract class Coinbase extends AbstractPaymentProcessor {
   ): Promise<
     PaymentProcessorError | PaymentProcessorSessionResponse["session_data"]
   > {
-    return paymentSessionData;
+    throw new MedusaError(
+      MedusaError.Types.NOT_ALLOWED,
+      "Refund not possible with coinbase"
+    );
   }
 
   async retrievePayment(
@@ -120,15 +173,23 @@ abstract class Coinbase extends AbstractPaymentProcessor {
   ): Promise<
     PaymentProcessorError | PaymentProcessorSessionResponse["session_data"]
   > {
-    return paymentSessionData;
+    const id = paymentSessionData.id as string;
+    const intent = await Charge.retrieve(id);
+    return intent as unknown as PaymentProcessorSessionResponse["session_data"];
   }
 
   async updatePayment(
     context: PaymentProcessorContext
   ): Promise<PaymentProcessorError | PaymentProcessorSessionResponse | void> {
     console.log("=>>>>>>>>>>calling update payment", context);
+    //cancelling previous payment
+    await this.cancelPayment(context.paymentSessionData);
 
-    return { session_data: context.paymentSessionData };
+    const newPaymentSessionOrder = (await this.initiatePayment(
+      context
+    )) as PaymentProcessorSessionResponse;
+
+    return { session_data: { ...newPaymentSessionOrder.session_data } };
   }
 
   async updatePaymentData(

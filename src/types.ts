@@ -1,4 +1,8 @@
-export interface CoinbaseOptions {}
+export interface CoinbaseOptions {
+  COINBASE_API_KEY: string;
+  COINBASE_CHARGE_NAME: string;
+  COINBASE_CHARGE_DESCRIPTION: string;
+}
 
 export const ErrorCodes = {
   PAYMENT_INTENT_UNEXPECTED_STATE: "payment_intent_unexpected_state",
