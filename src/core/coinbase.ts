@@ -79,34 +79,41 @@ abstract class Coinbase extends AbstractPaymentProcessor {
   async initiatePayment(
     context: PaymentProcessorContext
   ): Promise<PaymentProcessorError | PaymentProcessorSessionResponse> {
-    let {
-      amount,
-      currency_code,
-      paymentSessionData,
-      email,
-      customer,
-      billing_address,
-      resource_id,
-    } = context;
-
-    console.log("=>>>>>>>>>>>>calling initiate payment");
-    const charge = await Charge.create({
-      name: this.options_.COINBASE_CHARGE_NAME,
-      description: this.options_.COINBASE_CHARGE_DESCRIPTION,
-      pricing_type: "fixed_price",
-      local_price: { amount: amount.toString(), currency: currency_code },
-      metadata: {
-        customer_id: customer?.id,
+    try {
+      let {
+        amount,
+        currency_code,
+        paymentSessionData,
         email,
-      },
-    });
+        customer,
+        billing_address,
+        resource_id,
+      } = context;
+      console.log("=>>>>>>>>>>>>calling initiate payment");
+      const charge = await Charge.create({
+        name: this.options_.COINBASE_CHARGE_NAME,
+        description: this.options_.COINBASE_CHARGE_DESCRIPTION,
+        pricing_type: "fixed_price",
+        local_price: { amount: amount.toString(), currency: currency_code },
+        metadata: {
+          customer_id: customer?.id,
+          email,
+        },
+      });
 
-    console.log("charge is ", charge);
+      console.log("charge is ", charge);
 
-    return {
-      session_data: charge as any,
-      update_requests: undefined,
-    };
+      return {
+        session_data: charge as any,
+        update_requests: undefined,
+      };
+    } catch (e) {
+      console.log("=>>>>>>>>>>>>>>error in initiating payment coinbase ", e);
+      throw new MedusaError(
+        MedusaError.Types.NOT_ALLOWED,
+        "Error in initiating payment!!!"
+      );
+    }
   }
 
   async authorizePayment(
