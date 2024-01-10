@@ -13,6 +13,7 @@ import { MedusaError } from "@medusajs/utils";
 import crypto from "crypto";
 import coinbase from "coinbase-commerce-node";
 import moment from "moment";
+import axios from "axios";
 const Client = coinbase.Client;
 const Charge = coinbase.resources.Charge;
 
@@ -90,21 +91,42 @@ abstract class Coinbase extends AbstractPaymentProcessor {
         resource_id,
       } = context;
       console.log("=>>>>>>>>>>>>calling initiate payment");
-      const charge = await Charge.create({
-        name: this.options_.COINBASE_CHARGE_NAME,
-        description: this.options_.COINBASE_CHARGE_DESCRIPTION,
-        pricing_type: "fixed_price",
-        local_price: { amount: amount.toString(), currency: currency_code },
-        metadata: {
-          customer_id: customer?.id,
-          email,
-        },
-      });
 
-      console.log("charge is ", charge);
+      let res = await axios.post(
+        "https://api.commerce.coinbase.com/charges",
+        {
+          name: this.options_.COINBASE_CHARGE_NAME,
+          description: this.options_.COINBASE_CHARGE_DESCRIPTION,
+          pricing_type: "fixed_price",
+          local_price: { amount: amount.toString(), currency: currency_code },
+          metadata: {
+            customer_id: customer?.id,
+            email,
+          },
+        },
+        {
+          headers: {
+            "X-CC-Api-Key": this.options_.COINBASE_API_KEY,
+            "X-CC-Version": "2018-03-22",
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      // const charge = await Charge.create({
+      //   name: this.options_.COINBASE_CHARGE_NAME,
+      //   description: this.options_.COINBASE_CHARGE_DESCRIPTION,
+      //   pricing_type: "fixed_price",
+      //   local_price: { amount: amount.toString(), currency: currency_code },
+      //   metadata: {
+      //     customer_id: customer?.id,
+      //     email,
+      //   },
+      // });
+
+      console.log("charge is ", res);
 
       return {
-        session_data: charge as any,
+        session_data: res.data as any,
         update_requests: undefined,
       };
     } catch (e) {
