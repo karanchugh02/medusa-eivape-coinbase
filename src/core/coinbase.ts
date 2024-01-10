@@ -122,8 +122,9 @@ abstract class Coinbase extends AbstractPaymentProcessor {
       //     email,
       //   },
       // });
+      console.log("res");
 
-      console.log("charge is ", res);
+      console.dir(res.data, { depth: null });
 
       return {
         session_data: res.data as any,
