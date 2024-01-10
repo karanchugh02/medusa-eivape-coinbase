@@ -131,7 +131,7 @@ abstract class Coinbase extends AbstractPaymentProcessor {
         update_requests: undefined,
       };
     } catch (e) {
-      console.log("=>>>>>>>>>>>>>>error in initiating payment coinbase ", e);
+      console.dir(e, { depth: null });
       throw new MedusaError(
         MedusaError.Types.NOT_ALLOWED,
         "Error in initiating payment!!!"
