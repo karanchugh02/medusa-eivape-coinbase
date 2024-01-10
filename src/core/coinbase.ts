@@ -88,6 +88,8 @@ abstract class Coinbase extends AbstractPaymentProcessor {
       billing_address,
       resource_id,
     } = context;
+
+    console.log("=>>>>>>>>>>>>calling initiate payment");
     const charge = await Charge.create({
       name: this.options_.COINBASE_CHARGE_NAME,
       description: this.options_.COINBASE_CHARGE_DESCRIPTION,
@@ -98,6 +100,8 @@ abstract class Coinbase extends AbstractPaymentProcessor {
         email,
       },
     });
+
+    console.log("charge is ", charge);
 
     return {
       session_data: charge as any,
@@ -198,6 +202,12 @@ abstract class Coinbase extends AbstractPaymentProcessor {
   ): Promise<
     PaymentProcessorSessionResponse["session_data"] | PaymentProcessorError
   > {
+    if (data.amount || data.currency) {
+      throw new MedusaError(
+        MedusaError.Types.INVALID_DATA,
+        "Cannot update amount, use updatePayment instead"
+      );
+    }
     return data;
   }
 }
