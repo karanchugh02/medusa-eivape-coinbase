@@ -136,16 +136,12 @@ abstract class Coinbase extends AbstractPaymentProcessor {
   ): Promise<
     PaymentProcessorError | PaymentProcessorSessionResponse["session_data"]
   > {
-    console.log("=>>>>>>>>>>calling cancel payment", paymentSessionData);
-    let coinbaseStatus = await this.getCoinbasePaymentStatus(
-      paymentSessionData.id as string
-    );
-    if (coinbaseStatus != "NEW") {
-      throw new MedusaError(
-        MedusaError.Types.NOT_ALLOWED,
-        "Cannot cancel charge with status not as New"
-      );
-    }
+    // if (coinbaseStatus != "NEW") {
+    //   throw new MedusaError(
+    //     MedusaError.Types.NOT_ALLOWED,
+    //     "Cannot cancel charge with status not as New"
+    //   );
+    // }
 
     return paymentSessionData;
   }
