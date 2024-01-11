@@ -98,7 +98,7 @@ abstract class Coinbase extends AbstractPaymentProcessor {
           name: this.options_.COINBASE_CHARGE_NAME,
           description: this.options_.COINBASE_CHARGE_DESCRIPTION,
           pricing_type: "fixed_price",
-          local_price: { amount: amount, currency: currency_code },
+          local_price: { amount: "100", currency: "USD" },
           metadata: {
             customer_id: customer?.id,
             email,
