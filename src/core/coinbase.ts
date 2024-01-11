@@ -216,7 +216,13 @@ abstract class Coinbase extends AbstractPaymentProcessor {
   ): Promise<PaymentProcessorError | PaymentProcessorSessionResponse | void> {
     console.log("=>>>>>>>>>>calling update payment", context);
     //cancelling previous payment
-    await this.cancelPayment(context.paymentSessionData);
+    if (
+      context.paymentSessionData.data &&
+      //@ts-ignore
+      (context.paymentSessionData.data.id as string)
+    ) {
+      await this.cancelPayment(context.paymentSessionData);
+    }
 
     const newPaymentSessionOrder = (await this.initiatePayment(
       context
