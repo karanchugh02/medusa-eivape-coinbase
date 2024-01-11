@@ -55,7 +55,7 @@ abstract class Coinbase extends AbstractPaymentProcessor {
           finalStatus = PaymentSessionStatus.PENDING;
           break;
         case "PENDING":
-          finalStatus = PaymentSessionStatus.PENDING;
+          finalStatus = PaymentSessionStatus.AUTHORIZED;
           break;
         case "COMPLETED":
           finalStatus = PaymentSessionStatus.AUTHORIZED;
@@ -90,7 +90,11 @@ abstract class Coinbase extends AbstractPaymentProcessor {
         billing_address,
         resource_id,
       } = context;
-      console.log("=>>>>>>>>>>>>calling initiate payment");
+      console.log(
+        "=>>>>>>>>>>>>calling initiate payment",
+        paymentSessionData,
+        resource_id
+      );
 
       let res = await axios.post(
         "https://api.commerce.coinbase.com/charges",
@@ -103,6 +107,8 @@ abstract class Coinbase extends AbstractPaymentProcessor {
             customer_id: customer?.id,
             email,
           },
+          redirect_url: `http://localhost:8000/order/confirmed/${resource_id}`,
+          cancel_url: `http://localhost:8000/checkout`,
         },
         {
           headers: {
@@ -112,16 +118,7 @@ abstract class Coinbase extends AbstractPaymentProcessor {
           },
         }
       );
-      // const charge = await Charge.create({
-      //   name: this.options_.COINBASE_CHARGE_NAME,
-      //   description: this.options_.COINBASE_CHARGE_DESCRIPTION,
-      //   pricing_type: "fixed_price",
-      //   local_price: { amount: amount.toString(), currency: currency_code },
-      //   metadata: {
-      //     customer_id: customer?.id,
-      //     email,
-      //   },
-      // });
+
       console.log("res");
 
       console.dir(res.data, { depth: null });
