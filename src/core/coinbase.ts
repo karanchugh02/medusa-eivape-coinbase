@@ -106,6 +106,7 @@ abstract class Coinbase extends AbstractPaymentProcessor {
           metadata: {
             customer_id: customer?.id,
             email,
+            cart_id: resource_id,
           },
           redirect_url: `http://localhost:8000/order/confirmed/${resource_id}`,
           cancel_url: `http://localhost:8000/checkout`,
